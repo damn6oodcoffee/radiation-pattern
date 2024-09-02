@@ -54,6 +54,7 @@ private:
     FT_Face face;
 };
 
+bool firstTextBind = true;
 
 class TextRenderer {
 public:
@@ -71,7 +72,11 @@ public:
 
     }
 
+    // lest you get memory leaks, this shouldn't be called more than once
     void bind() {
+        if (!firstTextBind)
+            return;
+        firstTextBind = false;
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);

@@ -200,105 +200,6 @@ private:
 };
 */
 
-#if 0
-class SurfaceRenderer {
-public:
-    SurfaceRenderer(unsigned int ptsPerAxis, ColormapFunc cmFunc = defaultColormap)
-        : pointsPerAxis { ptsPerAxis }
-        , colormapFunc { cmFunc }
-    {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-    }
-
-    ~SurfaceRenderer() {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
-        glDeleteBuffers(1, &EBO);
-    }
-
-    void computeSurface(SurfaceFunc surfaceFunc, const SurfaceRange& range) {
-        surface.computeVertices(surfaceFunc, range, pointsPerAxis);
-        setUpVertices();
-    }
-
-    void bind() {
-        int vertSize = static_cast<int>(posAndColorVertices.size());
-        int indicesSize = static_cast<int>(indices.size());
-        glBindVertexArray(VAO); 
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertSize, &posAndColorVertices[0], GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indicesSize, &indices[0], GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);   
-        glBindVertexArray(0); 
-    }
-
-    void render() {
-        int indicesSize = static_cast<int>(indices.size());
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, indicesSize, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-    }
-
-    RangeBox getRangeBox() {
-        return surface.getRangeBox();
-    }
-
-    void setColormap(ColormapFunc colormapFnc) {
-        colormapFunc = colormapFnc;
-        setUpVertices();
-    }
-
-    unsigned int pointsPerAxis;
-
-private:
-    ColormapFunc colormapFunc;
-    Surface3D surface;
-    unsigned int VAO, VBO, EBO;
-    std::vector<float> posAndColorVertices;    // (x1, y1, z1, r1, g1, b1, x2, y2, ...)
-    std::vector<unsigned int> indices;
-
-    void setPosAndColor() {
-        std::vector<float> newVertices{};
-        for (auto it { surface.begin() }, itEnd { surface.end() }; it != itEnd; it += 3) {
-            newVertices.insert(newVertices.end(), it, it+3);
-            double normalizedValue { *(it+2) / surface.getValueExtent() };
-            RGB color { colormapFunc(normalizedValue) };
-            newVertices.insert(newVertices.end(), { color.r, color.g, color.b });
-        }
-        posAndColorVertices = std::move(newVertices);
-    }
-
-
-    void setIndices() {
-        std::vector<unsigned int> newIndices{};
-        for (unsigned int i { 0 }; i < pointsPerAxis; ++i) {
-            for (unsigned int j { 0 }; j < pointsPerAxis; ++j) {
-                if (i == pointsPerAxis - 1 || j == 0)
-                    continue;
-                newIndices.insert(newIndices.end(), 
-                    { j + i*pointsPerAxis, j - 1 + i*pointsPerAxis, j - 1 + (i+1)*pointsPerAxis });
-                newIndices.insert(newIndices.end(), 
-                    { j + i*pointsPerAxis, j - 1 + (i+1)*pointsPerAxis ,j + (i+1)*pointsPerAxis });
-            }
-        }
-        indices = std::move(newIndices); 
-    }
-
-    void setUpVertices() {
-        setPosAndColor();
-        setIndices();
-        bind();
-    }
-
-};
-
-#else
 
 class SurfaceRenderer {
 public:
@@ -324,7 +225,7 @@ public:
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
-
+    
     void bind() {
         int vertSize = static_cast<int>(posAndColorVertices.size());
         int indicesSize = static_cast<int>(indices.size());
@@ -408,7 +309,6 @@ private:
     }
 };
 
-#endif
 
 class DrawableFig2D {
 public:

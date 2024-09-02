@@ -57,9 +57,9 @@ std::vector<SphericalPoint> AntennaGrid::computeRadiationPattern(size_t azimuthP
     double polarStep{ std::numbers::pi / (polarPointCount - 1)};
 
     std::vector<SphericalPoint> vertices{};
-    SphericalPoint targetPoint{ distance, -std::numbers::pi, 0.0 };
+    SphericalPoint targetPoint{ distance, 0.0, 0.0 };
     double azimuthBegin{ 0.0 };
-    double thetaBegin{ -std::numbers::pi };
+    double thetaBegin{ 0.0 };
     for (size_t i{ 0 }; i < azimuthPointCount; ++i) {
         targetPoint.phi = azimuthBegin + i*azimuthStep;
         for (size_t j{ 0 }; j < polarPointCount; ++j) {

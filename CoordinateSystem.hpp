@@ -23,6 +23,13 @@ inline CartesianPoint sphericalToCartesian(const SphericalPoint& point) {
     };
 }
 
+inline UVPoint sphericalToUV(const SphericalPoint& point) {
+    return UVPoint{
+        std::sin(point.theta) * std::cos(point.phi),
+        std::sin(point.theta) * std::sin(point.phi),
+        point.r,
+    };
+}
 
 #endif
 
