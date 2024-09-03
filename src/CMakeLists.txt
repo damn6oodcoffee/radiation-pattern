@@ -1,20 +1,10 @@
-add_executable(RadiationPattern WIN32
-               Angle.cpp
-               Angle.h
-               AntennasGrid.cpp
-               AntennasGrid.h
-               CreatePattern.cpp 
-               CreatePattern.h  
+
+
+add_executable(${PROJECT_NAME} WIN32
+               #main.cpp
                MyApp.cpp
-               MyApp.h  
-               myfont.h  
-               MyFrame.cpp 
-               MyFrame.h  
-               OGLPane.cpp 
-               OGLPane.h  
-               RenderTimer.cpp  
-               RenderTimer.h
-               )
-
-
-target_link_libraries(RadiationPattern PRIVATE external_deps)
+               MyFrame.cpp
+               OGLPane.cpp
+               Antenna.cpp
+               ${CMAKE_SOURCE_DIR}/external/glad/src/glad.c
+              )

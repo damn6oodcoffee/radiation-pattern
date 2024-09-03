@@ -1,13 +1,17 @@
-#include "MyApp.h"
 
-#include "MyApp.h"
-
+#include "MyApp.hpp"
+#include <filesystem>
 
 wxIMPLEMENT_APP(MyApp);
 
 bool MyApp::OnInit() {
-	wxInitAllImageHandlers();
-	MyFrame* frame = new MyFrame("Radiation Pattern", wxDefaultPosition, wxDefaultSize);
-	frame->Show(true);
-	return true;
+	// TODELETE:
+    std::filesystem::current_path("../../../");
+    //
+    if (!wxApp::OnInit())
+        return false;
+
+    MyFrame* frame = new MyFrame("Hello OpenGL");
+    frame->Show();
+    return true;
 }

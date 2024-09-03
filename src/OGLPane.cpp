@@ -1,12 +1,43 @@
-#include "OGLPane.h"
+#include <chrono>
+#include <stdexcept>
+#include <numbers>
 
+#include "OGLPane.hpp"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+#include "shader.hpp"
+#include "camera.hpp"
+#include "surface.hpp"
+
+
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = SCR_WIDTH / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+bool firstMouse = true;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+double GetTimeAsDouble() {
+    using namespace std::chrono;
+    using SecondsFP = std::chrono::duration<double>;
+    return duration_cast<SecondsFP>(high_resolution_clock::now().time_since_epoch()).count();
+}
 
 BEGIN_EVENT_TABLE(OGLPane, wxGLCanvas)
 EVT_MOTION(OGLPane::mouseMoved)
-EVT_LEFT_DOWN(OGLPane::leftDown)
-EVT_LEFT_UP(OGLPane::leftUp)
-EVT_RIGHT_DOWN(OGLPane::rightDown)
-EVT_RIGHT_UP(OGLPane::rightUp)
+EVT_LEFT_DOWN(OGLPane::mouseDown)
+EVT_LEFT_UP(OGLPane::mouseReleased)
+EVT_RIGHT_DOWN(OGLPane::rightClick)
 EVT_LEAVE_WINDOW(OGLPane::mouseLeftWindow)
 EVT_SIZE(OGLPane::resized)
 EVT_KEY_DOWN(OGLPane::keyPressed)
@@ -15,556 +46,149 @@ EVT_MOUSEWHEEL(OGLPane::mouseWheelMoved)
 EVT_PAINT(OGLPane::render)
 END_EVENT_TABLE()
 
-OGLPane::OGLPane(wxFrame* parent, int* args) :
-	wxGLCanvas(parent, wxID_ANY, args, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE)
-{
-	m_context = new wxGLContext(this);
-
-	// To avoid flashing on MSW
-	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
-
-}
-
-OGLPane::~OGLPane()
-{
-	delete m_context;
-}
-
-int OGLPane::getWidth()
-{
-	return GetSize().x;
-}
-
-int OGLPane::getHeight()
-{
-	return GetSize().y;
-}
-
-void OGLPane::resized(wxSizeEvent& evt)
-{
-	//	wxGLCanvas::OnSize(evt);
-
-	Refresh();
-}
-
-void OGLPane::SetProjection()
-{
-
-
-	glFrontFace(GL_CW);
-
-	glDepthFunc(GL_LESS);
-	glEnable(GL_DEPTH_TEST);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(-2.0f, 2.0, -2.0f, 2.0f, 0.0f, 100.0f);
-	//gluPerspective(45.0f, (GLfloat)getWidth() / (GLfloat)getHeight(), 0.1f, 100.0f);
-
-
-	glViewport(0, 0, getWidth(), getHeight());
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-}
-
-
-#include "myfont.h"
-
-
-void OGLPane::render(wxPaintEvent& evt)
-{
-
-	if (!IsShown()) return;
-
-	wxGLCanvas::SetCurrent(*m_context);
-	wxPaintDC(this); // only to be used in paint events. use wxClientDC to paint outside the paint event
-
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	// ------------- draw some 3D ----------------
-	SetProjection();
-	glLoadIdentity();
-
-	// Point the camera at the origin from the positive octant (x,y,z > 0).
-	gluLookAt(5.0f, 5.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-	glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-	glRotatef(-90.0f, 0.0f, 0.0f, 1.0f);
-
-
-
-	// Lighting 
-	{
-		GLfloat light_ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-		GLfloat light_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-		GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		GLfloat light_position[] = { 1.0f, 1.0f, 1.0f, 0.0f };
-
-		glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-		glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-		glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-		glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-
-		GLfloat white[] = { 0.8f, 0.8f, 0.8f, 0.0f };
-		GLfloat cyan[] = { 1.f, .0f, .0f, 0.f };
-		glMaterialfv(GL_FRONT, GL_DIFFUSE, cyan);
-		glMaterialfv(GL_FRONT, GL_SPECULAR, white);
-		glMaterialf(GL_FRONT, GL_SHININESS, 128.0f);
-
-		glEnable(GL_LIGHTING);
-		glEnable(GL_LIGHT0);
-	}
-	//
-
-	glRotatef(xyAngle, -1.0f, 1.0f, 0.0f);
-	glRotatef(zAngle, 0.0f, 0.0f, 1.0f);
-	glTranslatef(offsetX, offsetY, 0);
-	glPushMatrix();
-	glScalef(zoomScale / (xlen), zoomScale / (ylen), zoomScale);
-
-
-
-	glDisable(GL_LIGHTING);
-	glDisable(GL_LIGHT0);
-
-	//glColor3f(1.0, 1.0, 1.0);
-	//glRasterPos3f(2 * M_PI, 0.0, 0.0);
-	//for (int i = 0; i < 96; i++) {
-	//	glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[i]);
-	//}
-	/*
-	string tickLabel;
-	int precision = 2;
-	glColor3f(1.0, 1.0, 1.0);
-	int axisTicks = 4;
-	double dx = 2 * M_PI / axisTicks;
-	for (int i = 0; i <= axisTicks; i++) {
-		glRasterPos3f(dx * i, M_PI / 2 * 1.05, 0.0);
-		tickLabel = std::to_string(dx * i * 180.0 / M_PI);
-		precision = 2;
-		for (auto& ch : tickLabel) {
-			glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch-32]);
-			if (ch == '.' || precision != 2) precision--;
-			if (precision == 0) break;
-		}
-	}
-
-	double dy = M_PI / axisTicks / 2;
-	for (int i = 0; i <= axisTicks; i++) {
-		glRasterPos3f(2 * M_PI * 1.1, dy * i, 0.0);
-		tickLabel = std::to_string(dy * i * 180.0 / M_PI);
-		precision = 2;
-		for (auto& ch : tickLabel) {
-			glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-			if (ch == '.' || precision != 2) precision--;
-			if (precision == 0) break;
-		}
-	}
-
-	double dz = 1.0 / axisTicks;
-	for (int i = 1; i <= axisTicks; i++) {
-		glRasterPos3f(2 * M_PI * 0, M_PI / 2 * 1.05, dz * i);
-		tickLabel = std::to_string(dz * i);
-		precision = 2;
-		for (auto& ch : tickLabel) {
-			glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-			if (ch == '.' || precision != 2) precision--;
-			if (precision == 0) break;
-		}
-	}
-
-	glColor3f(0.0, 0.0, 1.0);
-	glRasterPos3f(2 * M_PI * 1.35, M_PI / 4, 0.0);
-	tickLabel = "elevation";
-	for (auto& ch : tickLabel) {
-		glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-		if (ch == '.' || precision != 2) precision--;
-		if (precision == 0) break;
-	}
-	glColor3f(0.0, 1.0, 0.0);
-	glRasterPos3f(2 * M_PI / 2, M_PI / 2 * 1.2, 0.0);
-	tickLabel = "azimuth";
-	for (auto& ch : tickLabel) {
-		glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-		if (ch == '.' || precision != 2) precision--;
-		if (precision == 0) break;
-	}
-	glColor3f(1.0, 0.0, 0.0);
-	glRasterPos3f(0, M_PI / 2 * 1.2, 0.5);
-	tickLabel = "amplitude";
-	for (auto& ch : tickLabel) {
-		glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-		if (ch == '.' || precision != 2) precision--;
-		if (precision == 0) break;
-	}
-	*/
-	drawAxisLabels();
-	glTranslatef(-xmin, -ymin, 0);
-	DrawSurface();
-	glTranslatef(xmin, ymin, 0);
-	drawAxisBox(xlen, ylen, 1);
-
-
-	/*
-	for (int i = 0; i < silicon->atoms.size(); i++) {
-		if (i == 0) {
-			auto atom = silicon->atoms[i];
-			for (auto& nb : atom.neighbours) {
-				glBegin(GL_LINES);
-				glColor3f(0.0f, 1.0f, 1.0f);
-				glVertex3d(atom.x * 1.5e9, atom.y * 1.5e9, atom.z * 1.5e9);
-				glVertex3d(nb->x * 1.5e9, nb->y * 1.5e9, nb->z * 1.5e9);
-				glEnd();
-			}
-		}
-	}
-	*/
-
-	glPopMatrix();
-	glBegin(GL_LINES);
-	glColor3f(0, 1, 0); glVertex3d(0.0f, 0.0f, 0.0f); glVertex3d(10.0f, 0.0f, 0.0f);	// x axis.
-	glColor3f(0, 0, 1); glVertex3d(0.0f, 0.0f, 0.0f); glVertex3d(0.0f, 10.0f, 0.0f);	// y axis.
-	glColor3f(1, 0, 0); glVertex3d(0.0f, 0.0f, 0.0f); glVertex3d(0.0f, 0.0f, 10.0f);	// z axis.
-	glEnd();
-
-	
-	
-
-	glFlush();
-	SwapBuffers();
-}
-
-
-
-void OGLPane::mouseMoved(wxMouseEvent& event) {
-	if (bLeftDown) {
-		double scale = 2;
-		if (event.GetPosition().x - mouseClickPt.x > 0) zAngle += 0.5 * scale;
-		else if (event.GetPosition().x - mouseClickPt.x < 0) zAngle -= 0.5 * scale;
-		if (event.GetPosition().y - mouseClickPt.y > 0) xyAngle += 0.5 * scale;
-		else if (event.GetPosition().y - mouseClickPt.y < 0) xyAngle -= 0.5 * scale;
-
-		if (abs(zAngle) > 360) zAngle = 0;
-		if (abs(xyAngle) > 360) xyAngle = 0;
-		mouseClickPt = event.GetPosition();
-		//Refresh();
-	}
-	if (bRightDown) {
-		double zAngleRad = -zAngle * M_PI / 180 + M_PI / 4;
-		double scale = 0.025;
-		/*
-		if (event.GetPosition().x - mouseClickPt.x > 0) offsetX += scale;
-		else if (event.GetPosition().x - mouseClickPt.x < 0) offsetX -= scale;
-		if (event.GetPosition().y - mouseClickPt.y > 0) offsetY += scale;
-		else if (event.GetPosition().y - mouseClickPt.y < 0) offsetY -= scale;
-		*/
-
-		if (event.GetPosition().x - mouseClickPt.x > 0) { offsetY += scale * cos(zAngleRad); offsetX -= scale * sin(zAngleRad); }
-		else if (event.GetPosition().x - mouseClickPt.x < 0) { offsetY -= scale * cos(zAngleRad); offsetX += scale * sin(zAngleRad); }
-		if (event.GetPosition().y - mouseClickPt.y > 0) { offsetY += scale * sin(zAngleRad); offsetX += scale * cos(zAngleRad); }
-		else if (event.GetPosition().y - mouseClickPt.y < 0) { offsetY -= scale * sin(zAngleRad); offsetX -= scale * cos(zAngleRad); }
-		mouseClickPt = event.GetPosition();
-		//Refresh();
-	}
-}
-
-void OGLPane::leftDown(wxMouseEvent& event) {
-	bLeftDown = true;
-	mouseClickPt = event.GetPosition();
-}
-
-void OGLPane::leftUp(wxMouseEvent& event) {
-	bLeftDown = false;
-}
-
-void OGLPane::mouseWheelMoved(wxMouseEvent& event) {
-	int delta = event.GetWheelRotation();
-	wxDouble zoomPrev = zoomScale;
-	if (delta > 0) {
-		zoomScale *= 1.25;
-	}
-	else {
-		zoomScale = (zoomScale / 1.25) > 1.0 ? (zoomScale / 1.25) : 1.0;
-	}
-	//Refresh();
-}
-
-void OGLPane::rightDown(wxMouseEvent& event) {
-	bRightDown = true;
-}
-
-void OGLPane::rightUp(wxMouseEvent& event) {
-	bRightDown = false;
-}
-
-void OGLPane::mouseLeftWindow(wxMouseEvent& event) {
-	bLeftDown = false;
-	bRightDown = false;
-}
-
+void OGLPane::mouseMoved(wxMouseEvent& event) {}
+void OGLPane::mouseDown(wxMouseEvent& event) {}
+void OGLPane::mouseWheelMoved(wxMouseEvent& event) {}
+void OGLPane::mouseReleased(wxMouseEvent& event) {}
+void OGLPane::rightClick(wxMouseEvent& event) {}
+void OGLPane::mouseLeftWindow(wxMouseEvent& event) {}
 void OGLPane::keyPressed(wxKeyEvent& event) {}
-
 void OGLPane::keyReleased(wxKeyEvent& event) {}
 
-void OGLPane::SetBoundaries(double xmin, double xmax, double ymin, double ymax) {
-	this->xmin = xmin;
-	this->xmax = xmax;
-	this->ymin = ymin;
-	this->ymax = ymax;
-	this->xlen = abs(xmax - xmin);
-	this->ylen = abs(ymax - ymin);
-};
-
-void OGLPane::DrawSurface() {
-	if (vertices.empty()) return;
-	
-	// i - radius
-	// j - angle
-	for (int i = 0; i < vertices.size() - 1; i++) {
-		glBegin(GL_QUAD_STRIP); 
-		for (int j = 0; j < vertices[0].size(); j++) {
-			glColor3f(vertices[i][j].z, 0 , 1 - vertices[i][j].z);
-			glVertex3f(vertices[i][j].x, vertices[i][j].y, vertices[i][j].z);
-			glVertex3f(vertices[i + 1][j].x, vertices[i + 1][j].y, vertices[i + 1][j].z);
-			
-		}
-		glColor3f(vertices[i][0].z, 0, 1 - vertices[i][0].z);
-		glVertex3f(vertices[i][0].x, vertices[i][0].y, vertices[i][0].z);
-		glVertex3f(vertices[i + 1][0].x, vertices[i + 1][0].y, vertices[i + 1][0].z);
-		glEnd();
-	}
-
-
-}
-
-void drawBox(double scale)
+OGLPane::OGLPane(wxFrame* parent, const wxGLAttributes &canvasAttrs)
+    : wxGLCanvas(parent, canvasAttrs)
 {
-	glPushMatrix();
-	glScalef(scale, scale, scale);
 
+    // To avoid flasing on MSW
+    SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 
-	glBegin(GL_LINES);
+    // Setting up context
+    wxGLContextAttrs ctxAttrs;
+    ctxAttrs.PlatformDefaults().CoreProfile().OGLVersion(3, 3).EndList();
+    context = std::make_unique<wxGLContext>(this, nullptr, &ctxAttrs);
+    if (!context){
+        wxLogError("failed to set up context");
+        throw std::runtime_error("context set up failed");
+    }
+    SetCurrent(*context);
 
+    // Load OpenGL extensions.
+    int version = gladLoadGL();
+    if (version == 0) {
+        wxLogError("failed to load glad");
+        throw std::runtime_error("failed to load glad");
+    }
+    wxLogDebug("Loaded OpenGL.");
 
+    // OpenGL settings
+    glEnable(GL_DEPTH_TEST);
+    // For text rendering:
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glColor3f(1.0f, 1.0f, 1.0f);
+    // Set up shaders
+    surfaceShader = std::make_unique<Shader>("shaders/surface.vert", "shaders/surface.frag");
+    axisShader = std::make_unique<Shader>("shaders/axis.vert", "shaders/axis.frag");
+    textShader = std::make_unique<Shader>("shaders/text.vert", "shaders/text.frag");
+    gridShader = std::make_unique<Shader>("shaders/grid.vert", "shaders/grid.frag");
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+    surfaceShader->use();
+    surfaceShader->setMat4("projection", glm::value_ptr(projection));
+    axisShader->use();
+    axisShader->setMat4("projection", glm::value_ptr(projection));
+    textShader->use();
+    textShader->setMat4("projection", glm::value_ptr(projection));
+    gridShader->use();
+    gridShader->setMat4("projection", glm::value_ptr(projection));
 
+    
+    antennaGrid = std::make_unique<AntennaGrid>(10, 2, 2, 100);
+    antennaGrid->toggleCell(5,4);
+    antennaGrid->toggleCell(5,5);
+    antennaGrid->toggleCell(5,3);
+    antennaGrid->toggleCell(5,6);
 
-	// TOP
-	glVertex3f(0.0f, 0.0f, 1.0f);
-	glVertex3f(0.0f, 1.0f, 1.0f);
+    size_t azPointCount{ 512 }, thPointCount{ 512 };
+    auto radPattern = antennaGrid->computeRadiationPattern(azPointCount, thPointCount);
+    std::vector<SphericalPoint> upperHemispherePattern{};
+#if 1
+    std::copy_if(radPattern.begin(), radPattern.end(), std::back_inserter(upperHemispherePattern), [](auto&& elt){
+        return elt.theta <= std::numbers::pi / 2;
+    });
+    radPattern = upperHemispherePattern;
+    thPointCount = 256;
+#endif
+    std::vector<double> vertices{};
+    CoordsColoringRule coloringRule{};
+    for (auto&& sphPoint: radPattern) {
+#if 0
+        auto cartPoint{ sphericalToCartesian(sphPoint)};
+        vertices.insert(vertices.end(), { cartPoint.x, cartPoint.y, cartPoint.z });
+        coloringRule = [](double x, double y, double z) {
+            return std::sqrt(x*x + y*y + z*z);
+        };
+#else
+        auto uvPoint{ sphericalToUV(sphPoint) };
+        vertices.insert(vertices.end(), { uvPoint.u, uvPoint.v, uvPoint.z });
+        coloringRule = defaultColoringRule;
+#endif
+    }
 
-	glVertex3f(0.0f, 1.0f, 1.0f);
-	glVertex3f(1.0f, 1.0f, 1.0f);
+    Surface3D surface;
+    surface.computeVertices(sinc3D, { -1.0, 2.5, -1.3, 6.3 }, { 512, 512 });
+    surface.setVertices(vertices, { static_cast<unsigned>(azPointCount), static_cast<unsigned>(thPointCount) });
+    
+    plot3d = std::make_unique<Plot3D>("font/IBMPlexSans-Regular.ttf");
+    plot3d->plot(surface, turboColormap, coloringRule);
 
-	glVertex3f(1.0f, 1.0f, 1.0f);
-	glVertex3f(1.0f, 0.0f, 1.0f);
-
-	glVertex3f(1.0f, 0.0f, 1.0f);
-	glVertex3f(0.0f, 0.0f, 1.0f);
-	// BOTTOM
-	glVertex3f(0.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 1.0f, 0.0f);
-
-	glVertex3f(0.0f, 1.0f, 0.0f);
-	glVertex3f(1.0f, 1.0f, 0.0f);
-
-	glVertex3f(1.0f, 1.0f, 0.0f);
-	glVertex3f(1.0f, 0.0f, 0.0f);
-
-	glVertex3f(1.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 0.0f, 0.0f);
-
-	// VERTICAL LINES
-	glVertex3f(0.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 0.0f, 1.0f);
-
-	glVertex3f(0.0f, 1.0f, 0.0f);
-	glVertex3f(0.0f, 1.0f, 1.0f);
-
-	glVertex3f(1.0f, 1.0f, 0.0f);
-	glVertex3f(1.0f, 1.0f, 1.0f);
-
-	glVertex3f(1.0f, 0.0f, 0.0f);
-	glVertex3f(1.0f, 0.0f, 1.0f);
-
-	glVertex3f(0.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 0.0f, 1.0f);
-	
-
-	glEnd();
-	glPopMatrix();
-}
-void drawBoxGrid() {
-
-	int ticks = 8;
-	double dx;
-	double dy;
-	double dz;
-	dx = dy = dz = 1.0 / ticks;
-	glBegin(GL_LINES);
-
-	for (int i = 0; i < ticks; i++) {
-		glVertex3f(i * dx, 0.0f, 0.0f);
-		glVertex3f(i * dx, 1.0f, 0.0f);
-
-		glVertex3f(0.0f, i * dy, 0.0f);
-		glVertex3f(1.0f, i * dy, 0.0f);
-
-		glVertex3f(0.0f, 0.0f, i * dz);
-		glVertex3f(0.0f, 1.0f, i * dz);
-
-		glVertex3f(0.0f, 0.0f, i * dz);
-		glVertex3f(1.0f, 0.0f, i * dz);
-
-		glVertex3f(i * dx, 0.0f, 0.0f);
-		glVertex3f(i * dx, 0.0f, 1.0f);
-
-		glVertex3f(0.0f, i * dy, 0.0f);
-		glVertex3f(0.0f, i * dy, 1.0f);
-	}
-
-
-	glEnd();
-
-
+    isOpenGLInitialized = true;
 }
 
+void OGLPane::resized(wxSizeEvent& event) {
+    bool firstApperance = IsShownOnScreen() && !isOpenGLInitialized;
 
-void drawAxisBox(double scalex, double scaley, double scalez)
-{
-	glPushMatrix();
-	glScalef(scalex, scaley, scalez);
+    if (firstApperance)    {
+        return;
+    }
 
+    if (isOpenGLInitialized)
+    {
+        auto viewPortSize = event.GetSize() * GetContentScaleFactor();
+        glViewport(0, 0, viewPortSize.x, viewPortSize.y);
+    }
 
-	glBegin(GL_LINES);
+    event.Skip();
 
-
-
-	glColor3f(1.0f, 1.0f, 1.0f);
-
-
-	// TOP
-	glVertex3f(0.0f, 0.0f, 1.0f);
-	glVertex3f(0.0f, 1.0f, 1.0f);
-
-	//glVertex3f(0.0f, 1.0f, 1.0f);
-	//glVertex3f(1.0f, 1.0f, 1.0f);
-
-	//glVertex3f(1.0f, 1.0f, 1.0f);
-	//glVertex3f(1.0f, 0.0f, 1.0f);
-
-	glVertex3f(1.0f, 0.0f, 1.0f);
-	glVertex3f(0.0f, 0.0f, 1.0f);
-	// BOTTOM
-	glVertex3f(0.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 1.0f, 0.0f);
-
-	glVertex3f(0.0f, 1.0f, 0.0f);
-	glVertex3f(1.0f, 1.0f, 0.0f);
-
-	glVertex3f(1.0f, 1.0f, 0.0f);
-	glVertex3f(1.0f, 0.0f, 0.0f);
-
-	glVertex3f(1.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 0.0f, 0.0f);
-
-	// VERTICAL LINES
-	glVertex3f(0.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 0.0f, 1.0f);
-
-	glVertex3f(0.0f, 1.0f, 0.0f);
-	glVertex3f(0.0f, 1.0f, 1.0f);
-
-	//glVertex3f(1.0f, 1.0f, 0.0f);
-	//glVertex3f(1.0f, 1.0f, 1.0f);
-
-	glVertex3f(1.0f, 0.0f, 0.0f);
-	glVertex3f(1.0f, 0.0f, 1.0f);
-
-	glVertex3f(0.0f, 0.0f, 0.0f);
-	glVertex3f(0.0f, 0.0f, 1.0f);
-
-	
-
-	glEnd();
-	drawBoxGrid();
-	glPopMatrix();
+    //Refresh();
 }
 
-void OGLPane::SetVertices(vector<vector<Vertex3>> vx) {
-	vertices = vx;
-}
+void OGLPane::render(wxPaintEvent& event) {
+    wxPaintDC dc(this);
 
-void OGLPane::drawAxisLabels() {
+    if (!isOpenGLInitialized) {
+        return;
+    }
+    SetCurrent(*context);
 
-	string xlabel = "U";
-	string ylabel = "V";
+    double currentFrame{ GetTimeAsDouble() };
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
 
-	string tickLabel;
-	int precision = 2;
-	glColor3f(1.0, 1.0, 1.0);
-	int axisTicks = 4;
-	double dx = xlen / axisTicks;
-	for (int i = 0; i <= axisTicks; i++) {
-		glRasterPos3f(dx * i, ylen * 1.05, 0.0);
-		tickLabel = std::to_string(xmin + dx * i);
-		precision = 2;
-		for (auto& ch : tickLabel) {
-			glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-			if (ch == '.' || precision != 2) precision--;
-			if (precision == 0) break;
-		}
-	}
+    glClearColor(0.2f, 0.3, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	double dy = ylen/ axisTicks;
-	for (int i = 0; i <= axisTicks; i++) {
-		
-		tickLabel = std::to_string(ymin + dy * i);
-		glRasterPos3f(xlen * 1.1, dy * i, 0.0);
-		precision = 2;
-		for (auto& ch : tickLabel) {
-			glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-			if (ch == '.' || precision != 2) precision--;
-			if (precision == 0) break;
-		}
-	}
+    glm::mat4 view = camera.GetViewMatrix();
 
-	double dz = 1.0 / axisTicks;
-	for (int i = 1; i <= axisTicks; i++) {
-		glRasterPos3f(0, ylen * 1.05, dz * i);
-		tickLabel = std::to_string(dz * i);
-		precision = 2;
-		for (auto& ch : tickLabel) {
-			glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-			if (ch == '.' || precision != 2) precision--;
-			if (precision == 0) break;
-		}
-	}
+    textShader->use();
+    textShader->setMat4("view", glm::value_ptr(view));
+    textShader->setVec3("textColor", glm::value_ptr(glm::vec3(1.0f, 1.0f, 1.0f)));
 
-	glColor3f(0.0, 0.4, 1.0);
-	glRasterPos3f(xlen * 1.35, ylen / 2, 0.0);
-	tickLabel = ylabel;
-	for (auto& ch : tickLabel) {
-		glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-		if (ch == '.' || precision != 2) precision--;
-		if (precision == 0) break;
-	}
-	glColor3f(0.0, 1.0, 0.0);
-	glRasterPos3f(xlen / 2, ylen * 1.2, 0.0);
-	tickLabel = xlabel;
-	for (auto& ch : tickLabel) {
-		glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-		if (ch == '.' || precision != 2) precision--;
-		if (precision == 0) break;
-	}
-	glColor3f(1.0, 0.0, 0.0);
-	glRasterPos3f(0, ylen * 1.2, 0.5);
-	tickLabel = "Amplitude";
-	for (auto& ch : tickLabel) {
-		glBitmap(8, 13, 0.0, 2.0, 10.0, 0.0, rasters[ch - 32]);
-		if (ch == '.' || precision != 2) precision--;
-		if (precision == 0) break;
-	}
+    gridShader->use();
+    gridShader->setMat4("view", glm::value_ptr(view));
+
+    surfaceShader->use();
+    surfaceShader->setMat4("view", glm::value_ptr(view));
+    plot3d->render(*gridShader, *textShader, *surfaceShader);
+
+    SwapBuffers();
 }
