@@ -12,6 +12,7 @@
 #include "shader.hpp"
 #include "Antenna.hpp"
 #include "plot3D.hpp"
+#include "PlotScene.hpp"
 
 class OGLPane: public wxGLCanvas {
 public:
@@ -35,19 +36,20 @@ public:
     void keyPressed(wxKeyEvent& event);
     void keyReleased(wxKeyEvent& event);
 
+    void plot(const Surface3D& surface, 
+              ColormapFunc colormapFunc, 
+              CoordsColoringRule coloringRule);
+    
     DECLARE_EVENT_TABLE();
 
 private:
     bool isOpenGLInitialized{ false };
     std::unique_ptr<wxGLContext> context;
+    std::unique_ptr<PlotScene> plotScene;
 
-// TODO: refactor into a separate class:
-    std::unique_ptr<Shader> surfaceShader;
-    std::unique_ptr<Shader> axisShader;
-    std::unique_ptr<Shader> textShader;
-    std::unique_ptr<Shader> gridShader;
-    std::unique_ptr<AntennaGrid> antennaGrid;
-    std::unique_ptr<Plot3D> plot3d;
+    void setUpContext();
+    void setUpOpenGL();
+
 };
 
 

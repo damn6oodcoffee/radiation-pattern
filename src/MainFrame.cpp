@@ -1,7 +1,7 @@
 
-#include "MyFrame.hpp"
+#include "MainFrame.hpp"
 
-MyFrame::MyFrame(const wxString &title)
+MainFrame::MainFrame(const wxString &title)
     : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxDefaultSize)
 {
     auto sizer = new wxBoxSizer(wxVERTICAL);
@@ -9,8 +9,13 @@ MyFrame::MyFrame(const wxString &title)
     vAttrs.PlatformDefaults().Defaults().EndList();
     if (wxGLCanvas::IsDisplaySupported(vAttrs)) {
         glPane = new OGLPane(this, vAttrs);
-        //glPane->SetMinSize(FromDIP(wxSize(640, 480)));
+        glPane->SetMinSize(FromDIP(wxSize(640, 480)));
         sizer->Add(glPane, 1, wxEXPAND | wxALL);
     }
+
+    controlPanel = new ControlPanel(this);
+    controlPanel->computeRadiationPattern();
+
+    glPane->plot(controlPanel->getUVSurface(), viridisColormap, defaultColoringRule);
     SetSizerAndFit(sizer);
 }

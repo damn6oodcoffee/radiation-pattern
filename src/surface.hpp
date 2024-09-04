@@ -5,6 +5,8 @@
 #include <functional>
 #include <algorithm>
 #include <unordered_set>
+#include <glad/glad.h>
+#include <gl/gl.h>
 #include "colormaps.hpp"
 #include "CoordinateSystem.hpp"
 
@@ -34,12 +36,14 @@ inline double defaultColoringRule(double x, double y, double z) {
     return z;
 }
 
+inline double radialColoringRule(double x, double y, double z) {
+    return std::sqrt(x*x + y*y + z*z);
+}
+
 class Surface3D {
 public:
     Surface3D()
         : vertices{}
-        , maxVal{}
-        , minVal{}
         , rangeBox{}
         , gridDim{}
     {}
@@ -54,7 +58,6 @@ public:
         double dy { (range.yEnd - range.yBegin) / (dim.horizontalLineCount - 1) };
         double x{}, y{}, z{};
         std::vector<double> newVertices;
-        minVal = maxVal = surfaceFunc(range.xBegin, range.yBegin);
         for (int i { 0 }; i < dim.verticalLineCount; ++i) {
             x = i*dx + range.xBegin;
             for (int j { 0 }; j < dim.horizontalLineCount; ++j) {
@@ -74,42 +77,6 @@ public:
         defineRangeBox();
     }
 
-    // void setPolarVertices(std::vector<SphericalPoint> points) {
-    //     std::sort(points.begin(), points.end(), [](const auto& a, const auto& b){
-    //         if (a.phi < b.phi)
-    //             return true;
-    //         else if (a.phi > b.phi)
-    //             return false;
-    //         if (a.theta < b.theta)
-    //             return true;
-    //         return false;
-    //     });
-    //     std::vector<double> newVertices{};
-    //     for (auto&& point: points) {
-    //         CartesianPoint pt{ sphericalToCartesian(point) };
-    //         newVertices.insert(vertices.end(), { pt.x, pt.y, pt.z });
-    //     }
-    //     vertices = std::move(newVertices);
-    //     defineRangeBox();
-    // }
-
-    // void setVertices(std::vector<CartesianPoint> points) {
-    //     std::sort(points.begin(), points.end(), [](const auto& a, const auto& b){
-    //         if (a.x < b.x)
-    //             return true;
-    //         else if (a.x > b.x)
-    //             return false;
-    //         if (a.y < b.y)
-    //             return true;
-    //         return false;
-    //     });
-    //     std::vector<double> newVertices{};
-    //     for (auto&& point: points)
-    //         newVertices.insert(vertices.end(), { point.x, point.y, point.z });
-    //     vertices = std::move(newVertices);
-    //     defineRangeBox();
-    // }
-
     std::vector<double>::const_iterator begin() const { return vertices.cbegin(); }
     std::vector<double>::const_iterator end() const  { return vertices.cend(); }
     const std::vector<double>& getVertices() const { return vertices; }
@@ -118,8 +85,6 @@ public:
 
 private:
     std::vector<double> vertices;
-    double maxVal;
-    double minVal;
     RangeBox rangeBox;
     GridDimensions gridDim;
 
@@ -158,48 +123,6 @@ private:
 
 };
 
-/*
-class VAO {
-public:
-    VAO() {
-        glGenVertexArrays(1, &vao);
-
-    }
-
-    ~VAO() {
-        glDeleteVertexArrays(1, &vao);
-    }
-private:
-    GLuint vao;
-};
-
-class VBO {
-public:
-    VBO() {
-        glGenBuffers(1, &vbo);
-    }
-
-    ~VBO() {
-        glDeleteBuffers(1, &vbo);
-    }
-private:
-    GLuint vbo;
-};
-
-class EBO {
-public:
-    EBO() {
-        glGenBuffers(1, &ebo);
-    }
-
-    ~EBO() {
-        glDeleteBuffers(1, &ebo);
-    }
-private:
-    GLuint ebo;
-};
-*/
-
 
 class SurfaceRenderer {
 public:
@@ -227,13 +150,11 @@ public:
     }
     
     void bind() {
-        int vertSize = static_cast<int>(posAndColorVertices.size());
-        int indicesSize = static_cast<int>(indices.size());
         glBindVertexArray(VAO); 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertSize, &posAndColorVertices[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * posAndColorVertices.size(), &posAndColorVertices[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indicesSize, &indices[0], GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), &indices[0], GL_STATIC_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -246,17 +167,7 @@ private:
     std::vector<float> posAndColorVertices;
     std::vector<unsigned int> indices;
 
-
     void setUpPosAndColor(const Surface3D& surface, ColormapFunc colormapFunc, CoordsColoringRule coloringRule) {
-        // double normalizingConstant{ surface.getRangeBox().zExtent() };
-        // for (auto it { surface.begin() }, itEnd { surface.end() }; it != itEnd; it += 3) {
-        //     newVertices.insert(newVertices.end(), it, it+3);
-        //     double normalizedValue { *(it+2) / normalizingConstant };
-        //     RGB color { colormapFunc(normalizedValue) };
-        //     newVertices.insert(newVertices.end(), { color.r, color.g, color.b });
-        // }
-        // posAndColorVertices = std::move(newVertices);
-
         std::vector<float> newVertices{};
         std::vector<float> coordsMap{};
         auto& vertices{ surface.getVertices() };
@@ -308,54 +219,5 @@ private:
         bind();
     }
 };
-
-
-class DrawableFig2D {
-public:
-    DrawableFig2D()
-    {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-    }
-
-    ~DrawableFig2D() {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
-        glDeleteBuffers(1, &EBO);
-    }
-
-    void bind() {
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float), &vertices[0], GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0); 
-        glBindVertexArray(0); 
-    }
-
-    void draw() {
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-    }
-
-private:
-    unsigned int VAO, VBO, EBO;
-    std::vector<float> vertices = {
-         0.5f,  0.5f, 0.0f,  // top right
-         0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
-    };
-    std::vector<unsigned int> indices = {  // note that we start from 0!
-        1, 0, 3,  // first Triangle
-        2, 1, 3   // second Triangle
-    };
-
-};
-
 
 #endif

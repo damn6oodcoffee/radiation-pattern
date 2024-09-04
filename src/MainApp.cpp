@@ -1,17 +1,17 @@
 
-#include "MyApp.hpp"
+#include "MainApp.hpp"
 #include <filesystem>
 
-wxIMPLEMENT_APP(MyApp);
+wxIMPLEMENT_APP(MainApp);
 
-bool MyApp::OnInit() {
+bool MainApp::OnInit() {
 	// TODELETE:
     std::filesystem::current_path("../../../");
     //
     if (!wxApp::OnInit())
         return false;
 
-    MyFrame* frame = new MyFrame("Hello OpenGL");
+    MainFrame* frame = new MainFrame("Hello OpenGL");
     frame->Show();
     return true;
 }

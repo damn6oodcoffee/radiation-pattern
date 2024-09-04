@@ -282,6 +282,7 @@ public:
         surfaceRenderer.plot(surface, colormapFunc, coloringRule);
         axesRenderer.setTickLabels(surface.getRangeBox());
         plotGridRenderer.setUpGrid(axesRenderer.getTickCountX(), axesRenderer.getTickCountY(), axesRenderer.getTickCountZ());
+        //plotGridRenderer.setUpGrid(5,5,5);
         fitSurface(surface.getRangeBox());
         bind();
     }
@@ -298,7 +299,7 @@ public:
         axesRenderer.render(axisShader);
         surfaceShader.use();
         glm::mat4 model{ fitSurfaceMatrix };
- 
+
         model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         surfaceShader.setMat4("model", glm::value_ptr(model));
