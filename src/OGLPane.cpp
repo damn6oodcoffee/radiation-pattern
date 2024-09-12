@@ -51,7 +51,7 @@ void OGLPane::mouseLeftWindow(wxMouseEvent& event) {}
 void OGLPane::keyPressed(wxKeyEvent& event) {}
 void OGLPane::keyReleased(wxKeyEvent& event) {}
 
-OGLPane::OGLPane(wxFrame* parent, const wxGLAttributes &canvasAttrs)
+OGLPane::OGLPane(wxWindow* parent, const wxGLAttributes &canvasAttrs)
     : wxGLCanvas(parent, canvasAttrs)
 {
     // To avoid flasing on MSW
@@ -64,6 +64,8 @@ OGLPane::OGLPane(wxFrame* parent, const wxGLAttributes &canvasAttrs)
     plotScene = std::make_unique<PlotScene>();
     isOpenGLInitialized = true;
 }
+
+
 
 void OGLPane::setUpContext() {
     wxGLContextAttrs ctxAttrs;

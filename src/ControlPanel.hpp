@@ -5,8 +5,9 @@
 #include <wx/wx.h>
 #include "Antenna.hpp"
 #include "surface.hpp"
+#include "GridPanel.hpp"
 
-class ControlPanel: wxPanel {
+class ControlPanel: public wxPanel {
 public:
     ControlPanel(wxWindow *parent, wxWindowID winid = wxID_ANY,
                  const wxPoint &pos = wxDefaultPosition,
@@ -15,6 +16,7 @@ public:
     Surface3D getPolarSurface();
     Surface3D getUVSurface();
 private:
+    GridPanel* gridPanel;
     wxTextCtrl* gridSizeCtrl;
     wxTextCtrl* intervalCtrl;
     wxTextCtrl* wavelengthCtrl;

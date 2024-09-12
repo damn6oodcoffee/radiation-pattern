@@ -16,7 +16,7 @@
 
 class OGLPane: public wxGLCanvas {
 public:
-    OGLPane(wxFrame* parent, const wxGLAttributes& canvasAttrs);
+    OGLPane(wxWindow* parent, const wxGLAttributes& canvasAttrs);
     
     void resized(wxSizeEvent& event);
     
@@ -40,7 +40,6 @@ public:
               ColormapFunc colormapFunc, 
               CoordsColoringRule coloringRule);
     
-    DECLARE_EVENT_TABLE();
 
 private:
     bool isOpenGLInitialized{ false };
@@ -49,6 +48,8 @@ private:
 
     void setUpContext();
     void setUpOpenGL();
+
+    DECLARE_EVENT_TABLE();
 
 };
 

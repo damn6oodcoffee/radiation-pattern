@@ -8,5 +8,6 @@ add_executable(${PROJECT_NAME} WIN32
                Antenna.cpp
                PlotScene.cpp
                ControlPanel.cpp
+               GridPanel.cpp
                ${CMAKE_SOURCE_DIR}/external/glad/src/glad.c
               )
