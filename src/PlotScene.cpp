@@ -1,8 +1,9 @@
 
 #include "PlotScene.hpp"
 
+
 PlotScene::PlotScene()
-    : camera(glm::vec3(0.0f, 0.0f, 3.0f))
+    : camera(glm::vec3(0.5f, 0.5f, 3.0f))
     , surfaceShader("shaders/surface.vert", "shaders/surface.frag")
     , textShader("shaders/text.vert", "shaders/text.frag")
     , gridShader("shaders/grid.vert", "shaders/grid.frag")
@@ -27,6 +28,7 @@ void PlotScene::setPerspective(float fovY, float aspect, float nearPlane, float 
 }
 
 void PlotScene::render() {
+
     glm::mat4 view = camera.GetViewMatrix();
 
     textShader.use();

@@ -22,7 +22,7 @@ public:
     void setPerspective(float fovY, float aspect, float nearPlane, float farPlane);
     void render();
     Camera camera;
-private:
+//private:
     Shader surfaceShader;
     Shader textShader;
     Shader gridShader;

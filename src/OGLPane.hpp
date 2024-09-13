@@ -16,10 +16,12 @@
 
 class OGLPane: public wxGLCanvas {
 public:
-    OGLPane(wxWindow* parent, const wxGLAttributes& canvasAttrs);
+    OGLPane(wxWindow* parent, const wxGLAttributes& canvasAttrs, wxGLContext* sharedContext);
+    OGLPane(wxWindow* parent, const wxGLAttributes& canvasAttrs, wxGLContext* sharedContext, bool dummy);
     
     void resized(wxSizeEvent& event);
     
+    wxGLContext* getContext(){return context.get();}
     int getWidth();
     int getHeight();
 
@@ -40,13 +42,14 @@ public:
               ColormapFunc colormapFunc, 
               CoordsColoringRule coloringRule);
     
-
-private:
+    int id;
+//private:
     bool isOpenGLInitialized{ false };
     std::unique_ptr<wxGLContext> context;
     std::unique_ptr<PlotScene> plotScene;
 
-    void setUpContext();
+    void setUpContext( wxGLContext* sharedContext);
+    void loadExtensions();
     void setUpOpenGL();
 
     DECLARE_EVENT_TABLE();

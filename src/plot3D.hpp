@@ -295,7 +295,6 @@ public:
 
     void render(Shader& gridShader, Shader& axisShader, Shader& surfaceShader) {
         plotGridRenderer.render(gridShader);
-        
         axesRenderer.render(axisShader);
         surfaceShader.use();
         glm::mat4 model{ fitSurfaceMatrix };

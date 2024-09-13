@@ -11,6 +11,7 @@ public:
 
 private:
     OGLPane* glPane;
+    OGLPane* glPane1;
     ControlPanel* controlPanel;
 };
 

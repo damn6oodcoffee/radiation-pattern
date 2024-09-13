@@ -51,13 +51,13 @@ void OGLPane::mouseLeftWindow(wxMouseEvent& event) {}
 void OGLPane::keyPressed(wxKeyEvent& event) {}
 void OGLPane::keyReleased(wxKeyEvent& event) {}
 
-OGLPane::OGLPane(wxWindow* parent, const wxGLAttributes &canvasAttrs)
+OGLPane::OGLPane(wxWindow* parent, const wxGLAttributes &canvasAttrs,  wxGLContext* sharedContext)
     : wxGLCanvas(parent, canvasAttrs)
 {
-    // To avoid flasing on MSW
+    // To avoid flashing on MSW
     SetBackgroundStyle(wxBG_STYLE_CUSTOM);
-
-    setUpContext();
+    setUpContext(sharedContext);
+    loadExtensions();
     setUpOpenGL();
     
     // Set up the scene
@@ -65,27 +65,42 @@ OGLPane::OGLPane(wxWindow* parent, const wxGLAttributes &canvasAttrs)
     isOpenGLInitialized = true;
 }
 
-
-
-void OGLPane::setUpContext() {
+OGLPane::OGLPane(wxWindow* parent, const wxGLAttributes& canvasAttrs, wxGLContext* sharedContext, bool dummy)
+    : wxGLCanvas(parent, canvasAttrs)
+{
+    // To avoid flashing on MSW
+    SetBackgroundStyle(wxBG_STYLE_CUSTOM);
     wxGLContextAttrs ctxAttrs;
     ctxAttrs.PlatformDefaults().CoreProfile().OGLVersion(3, 3).EndList();
-    context = std::make_unique<wxGLContext>(this, nullptr, &ctxAttrs);
+    context = std::unique_ptr<wxGLContext>(new wxGLContext(this, nullptr, &ctxAttrs));
+    plotScene = nullptr;
+    //plotScene = std::make_unique<PlotScene>();
+    isOpenGLInitialized = true;
+}
+
+void OGLPane::setUpContext(wxGLContext* sharedContext) {
+    wxGLContextAttrs ctxAttrs;
+    ctxAttrs.PlatformDefaults().CoreProfile().OGLVersion(3, 3).EndList();
+    context = std::make_unique<wxGLContext>(this, sharedContext, &ctxAttrs);
     if (!context){
         wxLogError("failed to set up context");
         throw std::runtime_error("context set up failed");
     }
-    SetCurrent(*context);
 }
 
-void OGLPane::setUpOpenGL() {
-    // Load OpenGL extensions.
+void OGLPane::loadExtensions() {
+    SetCurrent(*context);
+     // Load OpenGL extensions.
     int version = gladLoadGL();
     if (version == 0) {
         wxLogError("failed to load glad");
         throw std::runtime_error("failed to load glad");
     }
     wxLogDebug("Loaded OpenGL.");
+}
+
+void OGLPane::setUpOpenGL() {
+    SetCurrent(*context);
     /* OpenGL settings */
     glEnable(GL_DEPTH_TEST);
     // For text rendering:
@@ -94,27 +109,36 @@ void OGLPane::setUpOpenGL() {
 }
 
 void OGLPane::resized(wxSizeEvent& event) {
+    // if (!plotScene) {
+    //     event.Skip();
+    //     return;
+    // }
+
     bool firstApperance = IsShownOnScreen() && !isOpenGLInitialized;
     if (firstApperance) {
         return;
     }
     
     if (isOpenGLInitialized) {
+        SetCurrent(*context);
         auto size = event.GetSize();
         auto viewPortSize = size * GetContentScaleFactor();
         glViewport(0, 0, viewPortSize.x, viewPortSize.y);
-        plotScene->setPerspective(
-            glm::radians(45.0f), 
-            static_cast<float>(size.GetWidth()) / static_cast<float>(size.GetHeight()),
-            0.1f, 
-            100.0f
-        );
+        if (plotScene && size.GetWidth() && size.GetHeight())
+            plotScene->setPerspective(
+                glm::radians(45.0f), 
+                static_cast<float>(size.GetWidth()) / static_cast<float>(size.GetHeight()),
+                0.1f, 
+                100.0f
+            );
     }
     event.Skip();
     //Refresh();
 }
 
 void OGLPane::render(wxPaintEvent& event) {
+ 
+   
     wxPaintDC dc(this);
 
     if (!isOpenGLInitialized) {
@@ -126,11 +150,22 @@ void OGLPane::render(wxPaintEvent& event) {
     // deltaTime = currentFrame - lastFrame;
     // lastFrame = currentFrame;
 
-    glClearColor(0.2f, 0.3, 0.3f, 1.0f);
+    if (id == 999) {
+        static int i = 0;
+        if (i < 50) {
+            glClearColor(0.2f, 0.3, 0.3f, 1.0f);
+        } else {
+            glClearColor(0.2f, 0.0f, 0.6f, 1.0f);
+        }
+        i = (i + 1) % 100;
+    } else {
+        glClearColor(0.2f, 0.3, 0.3f, 1.0f);
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    plotScene->render();
-
+    
+    if (plotScene) 
+        plotScene->render();
+    
     SwapBuffers();
 }
 
@@ -138,5 +173,7 @@ void OGLPane::plot(const Surface3D& surface,
                    ColormapFunc colormapFunc, 
                    CoordsColoringRule coloringRule)
 {
-    plotScene->plot(surface, colormapFunc, coloringRule);
+    SetCurrent(*context);
+    if (plotScene)
+        plotScene->plot(surface, colormapFunc, coloringRule);
 }
